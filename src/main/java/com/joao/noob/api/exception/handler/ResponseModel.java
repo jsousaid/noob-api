@@ -1,6 +1,6 @@
 package com.joao.noob.api.exception.handler;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -10,7 +10,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 public class ResponseModel {
 
     private Integer status;
-    private LocalDateTime time;
+    private OffsetDateTime time;
     private String message;
     private List<Field> errorFields;
 
@@ -22,11 +22,11 @@ public class ResponseModel {
         this.status = status;
     }
 
-    public LocalDateTime getTime() {
+    public OffsetDateTime getTime() {
         return time;
     }
 
-    public void setTime(LocalDateTime time) {
+    public void setTime(OffsetDateTime time) {
         this.time = time;
     }
 

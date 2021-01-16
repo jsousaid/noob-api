@@ -1,6 +1,6 @@
 package com.joao.noob.api.exception.handler;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,7 +32,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
         responseModel.setStatus(status.value());
         responseModel.setMessage(INVALID_FIELD_ERROR_MESSAGE);
-        responseModel.setTime(LocalDateTime.now());
+        responseModel.setTime(OffsetDateTime.now());
         responseModel.setErrorFields(fields);
 
         return super.handleExceptionInternal(ex, responseModel, headers, status,
@@ -48,7 +48,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
         responseModel.setStatus(status.value());
         responseModel.setMessage(e.getLocalizedMessage());
-        responseModel.setTime(LocalDateTime.now());
+        responseModel.setTime(OffsetDateTime.now());
 
         return handleExceptionInternal(e, responseModel, new HttpHeaders(),
                 status, webRequest);
