@@ -4,10 +4,16 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.UUID;
 
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,7 +46,7 @@ public class ClientApiTest extends Utils {
     }
 
     @Test
-    public void givenHasOneClientRegistered_whenFindClientsAllClients_thenReturnClient()
+    public void givenHasOneClientRegistered_whenFindAllClients_thenReturnClient()
             throws Exception {
 
         String name = "Joao Sousa";
@@ -61,7 +67,7 @@ public class ClientApiTest extends Utils {
     }
 
     @Test
-    public void givenNoClientsRegistered_whenFindClientsAllClients_thenReturnNoContent()
+    public void givenNoClientsRegistered_whenFindAllClients_thenReturnNoContent()
             throws Exception {
 
         mvc.perform(get("/clients").contentType(MediaType.APPLICATION_JSON))
@@ -162,9 +168,221 @@ public class ClientApiTest extends Utils {
                         is("Já existe um cliente cadastrado com este e-mail")));
     }
 
-    // TODO: CRIAR TESTES:
-    // tentando criar um client com o nome inválido
-    // tentando criar um client com o email inválido
-    // todos os cenários de update
-    // todos os cenários de delete
+    @Test
+    public void givenNoClientRegistered_whenCreateClientWithInvlaidEmail_thenReturnBadRequestWithMessage()
+            throws Exception {
+
+        String clientName = "João Sousa";
+        String clientEmail = "joaosousafatecgmailcom";
+        String clientPhone = "0283-2131";
+
+        String bodyJson = "{\"name\": \"" + clientName + "\"," + "\"email\": \""
+                + clientEmail + "\"," + "\"phoneNumber\": \"" + clientPhone
+                + "\"}";
+
+        mvc.perform(post("/clients").content(bodyJson)
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.time", is(notNullValue())))
+                .andExpect(jsonPath("$.message", is(
+                        "Um ou mais campos estão inválidos. Tente novamente!")))
+                .andExpect(jsonPath("$.errorFields", Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.errorFields[0].fieldName", is("email")))
+                .andExpect(jsonPath("$.errorFields[0].fieldError",
+                        is("must be a well-formed email address")));
+
+        Client clientNotCreated = repository.findByEmail(clientEmail);
+
+        assertNull(clientNotCreated);
+
+    }
+
+    @Test
+    public void givenNoClientRegistered_whenCreateClientWithBlankName_thenReturnBadRequestWithMessage()
+            throws Exception {
+
+        String clientName = "     ";
+        String clientEmail = "joaosousafatec@gmail.com";
+        String clientPhone = "0283-2131";
+
+        String bodyJson = "{\"name\": \"" + clientName + "\"," + "\"email\": \""
+                + clientEmail + "\"," + "\"phoneNumber\": \"" + clientPhone
+                + "\"}";
+
+        mvc.perform(post("/clients").content(bodyJson)
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.time", is(notNullValue())))
+                .andExpect(jsonPath("$.message", is(
+                        "Um ou mais campos estão inválidos. Tente novamente!")))
+                .andExpect(jsonPath("$.errorFields", Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.errorFields[0].fieldName", is("name")))
+                .andExpect(jsonPath("$.errorFields[0].fieldError",
+                        is("must not be blank")));
+
+        Client clientNotCreated = repository.findByEmail(clientEmail);
+
+        assertNull(clientNotCreated);
+
+    }
+
+    @Test
+    public void givenClientRegistered_whenUpdateClientName_thenReturnOkWithBody()
+            throws Exception {
+
+        String clientName = "Joao Sousa";
+        String clientEmail = "joao.sousafatec@gmail.com";
+        String clientPhone = "97136720";
+        String newClientName = "João Paulo Sousa";
+
+        createClient(clientName, clientEmail, clientPhone);
+
+        Client clientBeforeUpdate = repository.findByEmail(clientEmail);
+        String clientId = clientBeforeUpdate.getId().toString();
+
+        assertEquals(clientName, clientBeforeUpdate.getName());
+
+        String bodyJson = "{\"name\": \"" + newClientName + "\","
+                + "\"email\": \"" + clientEmail + "\"," + "\"phoneNumber\": \""
+                + clientPhone + "\"}";
+
+        mvc.perform(put("/clients/" + clientId).content(bodyJson)
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(clientId)))
+                .andExpect(jsonPath("$.name", is(newClientName)))
+                .andExpect(jsonPath("$.email", is(clientEmail)))
+                .andExpect(jsonPath("$.phoneNumber", is(clientPhone)));
+
+        Client clientAfterUpdate = repository.findByEmail(clientEmail);
+
+        assertEquals(newClientName, clientAfterUpdate.getName());
+
+    }
+
+    @Test
+    public void givenClientRegistered_whenUpdateClientWithUnregisteredId_thenReturnNotFound()
+            throws Exception {
+
+        String clientName = "Joao Sousa";
+        String clientEmail = "joao.sousafatec@gmail.com";
+        String clientPhone = "97136720";
+        String newClientName = "João Paulo Sousa";
+
+        createClient(clientName, clientEmail, clientPhone);
+
+        String invalidId = UUID.randomUUID().toString();
+
+        String bodyJson = "{\"name\": \"" + newClientName + "\","
+                + "\"email\": \"" + clientEmail + "\"," + "\"phoneNumber\": \""
+                + clientPhone + "\"}";
+
+        mvc.perform(put("/clients/" + invalidId).content(bodyJson)
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+                .andExpect(status().isNotFound());
+
+    }
+
+    @Test
+    public void givenClientRegistered_whenUpdateClientWithInvalidNameAndEmail_thenReturnBadRequestWithMessage()
+            throws Exception {
+
+        String clientName = "Joao Sousa";
+        String clientEmail = "joao.sousafatec@gmail.com";
+        String clientPhone = "97136720";
+        String newClientName = "   ";
+        String newClientEmail = "blablabla";
+
+        createClient(clientName, clientEmail, clientPhone);
+
+        Client clientBeforeUpdate = repository.findByEmail(clientEmail);
+        String clientId = clientBeforeUpdate.getId().toString();
+
+        String bodyJson = "{\"name\": \"" + newClientName + "\","
+                + "\"email\": \"" + newClientEmail + "\","
+                + "\"phoneNumber\": \"" + clientPhone + "\"}";
+
+        mvc.perform(put("/clients/" + clientId).content(bodyJson)
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.time", is(notNullValue())))
+                .andExpect(jsonPath("$.message", is(
+                        "Um ou mais campos estão inválidos. Tente novamente!")))
+                .andExpect(jsonPath("$.errorFields", Matchers.hasSize(2)));
+
+    }
+
+    @Test
+    public void givenTwoClientsRegistered_whenUpdateClientWithEmailDuplicated_thenReturnBadRequestWithMessage()
+            throws Exception {
+
+        String nameClient1 = "João Sousa Ma Oi";
+        String emailClient1 = "joao.sousa@idtrust.com.br";
+        String phoneClient1 = "0283-2131";
+        Client client1 = createClient(nameClient1, emailClient1, phoneClient1);
+        String idClient1 = client1.getId().toString();
+
+        String nameClient2 = "Maria Medeiros";
+        String emailClient2 = "maria.medeiros@gmail.com.br";
+        String phoneClient2 = "1324-9032";
+        createClient(nameClient2, emailClient2, phoneClient2);
+
+        String bodyJson = "{\"name\": \"" + nameClient1 + "\","
+                + "\"email\": \"" + emailClient2 + "\"," + "\"phoneNumber\": \""
+                + phoneClient1 + "\"}";
+
+        mvc.perform(put("/clients/" + idClient1).content(bodyJson)
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.time", is(notNullValue())))
+                .andExpect(jsonPath("$.message",
+                        is("Já existe um cliente cadastrado com este e-mail")));
+    }
+
+    @Test
+    public void givenTwoClientsRegistered_whenDeletClient_thenReturnNoContent()
+            throws Exception {
+
+        String nameClient1 = "João Sousa Ma Oi";
+        String emailClient1 = "joao.sousa@idtrust.com.br";
+        String phoneClient1 = "0283-2131";
+        Client client1 = createClient(nameClient1, emailClient1, phoneClient1);
+        String idClient1 = client1.getId().toString();
+
+        String nameClient2 = "Maria Medeiros";
+        String emailClient2 = "maria.medeiros@gmail.com.br";
+        String phoneClient2 = "1324-9032";
+        createClient(nameClient2, emailClient2, phoneClient2);
+
+        mvc.perform(delete("/clients/" + idClient1))
+                .andExpect(status().isNoContent());
+
+        Client clientDeleted = repository.findByEmail(emailClient1);
+        Client clientNotDeleted = repository.findByEmail(emailClient2);
+
+        assertNull(clientDeleted);
+        assertNotNull(clientNotDeleted);
+    }
+
+    @Test
+    public void givenClientRegistered_whenDeletClientWithUnregisteredId_thenReturnNotFound()
+            throws Exception {
+
+        String nameClient1 = "João Sousa Ma Oi";
+        String emailClient1 = "joao.sousa@idtrust.com.br";
+        String phoneClient1 = "0283-2131";
+        createClient(nameClient1, emailClient1, phoneClient1);
+
+        String invalidId = UUID.randomUUID().toString();
+
+        mvc.perform(delete("/clients/" + invalidId))
+                .andExpect(status().isNotFound());
+
+        Client clientNotDeleted = repository.findByEmail(emailClient1);
+        assertNotNull(clientNotDeleted);
+    }
 }

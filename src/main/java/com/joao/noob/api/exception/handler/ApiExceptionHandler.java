@@ -20,6 +20,8 @@ import com.joao.noob.domain.exception.ServiceException;
 @ControllerAdvice
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
+    private static final String INVALID_FIELD_ERROR_MESSAGE = "Um ou mais campos estão inválidos. Tente novamente!";
+
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpHeaders headers,
@@ -29,8 +31,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         var fields = getErrorFields(ex);
 
         responseModel.setStatus(status.value());
-        responseModel.setMessage(
-                "Um ou mais campos estão inválidos. Veja os detalhes em [errorFields] e tente novamente!");
+        responseModel.setMessage(INVALID_FIELD_ERROR_MESSAGE);
         responseModel.setTime(LocalDateTime.now());
         responseModel.setErrorFields(fields);
 
